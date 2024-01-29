@@ -1,14 +1,19 @@
 import discord
-from discord.ext import commands, tasks
+from discord.ext import commands
 import datetime
 import random
 
 intents = discord.Intents.default()
 intents.messages = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+bot = commands.Bot(command_prefix=commands.when_mentioned_or(''), intents=intents, help_command=commands.DefaultHelpCommand())
+
+# Add your application ID and public key here
+application_id = 1195902422879580282
+public_key = "9aa33fa40fbbd7d78eb26715d886e5dbbfcd80b4c384688f3f140268f5e17e18"
 
 user_points = {}
+coaching_levels = {}  # To track coaching levels (green, yellow, red, terminated)
 coaching_history = {}
 last_message_date = {}
 
@@ -29,26 +34,27 @@ corporate_messages = [
 async def on_ready():
     print(f'We have logged in as {bot.user.name}')
 
-@bot.command(name='coach', pass_context=True)
+@bot.command(name='coach')
 async def coach(ctx, member: discord.Member, *, reason=None):
-    coach_author_id = ctx.author.id
     coach_target_id = member.id
+
+    if coach_target_id not in coaching_levels:
+        coaching_levels[coach_target_id] = 0  # Initialize coaching level to green
 
     if coach_target_id not in coaching_history:
         coaching_history[coach_target_id] = []
 
-    if coach_target_id not in user_points:
-        user_points[coach_target_id] = 0
+    coaching_levels[coach_target_id] += 1
 
-    if user_points[coach_target_id] >= 5:
-        await ctx.send(f"{member.mention}, Fired! 🔥")
-        user_points[coach_target_id] = 0
+    if coaching_levels[coach_target_id] >= 5:
+        await ctx.send(f"{member.mention}, Terminated! 🔥")
+        coaching_levels[coach_target_id] = 0
     else:
-        user_points[coach_target_id] += 1
-        coaching_history[coach_target_id].append({"level": user_points[coach_target_id], "reason": reason})
-        await ctx.send(f"{member.mention}, Coach level: {user_points[coach_target_id]}, Reason: {reason}")
+        level_names = ["Green", "Yellow", "Red", "Terminated"]
+        coaching_history[coach_target_id].append({"level": coaching_levels[coach_target_id], "reason": reason})
+        await ctx.send(f"{member.mention}, Coaching level: {level_names[coaching_levels[coach_target_id]]}, Reason: {reason}")
 
-@bot.command(name='view_coachings', pass_context=True)
+@bot.command(name='vcoach')
 async def view_coachings(ctx, member: discord.Member):
     coach_target_id = member.id
 
@@ -64,34 +70,36 @@ async def view_coachings(ctx, member: discord.Member):
     else:
         await ctx.send(f"{member.display_name} has no coaching history.")
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
+@bot.command(name='reset')
+async def reset(ctx):
+    user_id = ctx.author.id
 
-    user_id = message.author.id
-
-    if user_id not in user_points:
+    if user_id in coaching_levels:
+        coaching_levels[user_id] = 0
         user_points[user_id] = 0
+        await ctx.send(f"{ctx.author.mention}, You have reset your coaching level and points. You can now interact with the bot's commands again.")
 
-    if user_id not in last_message_date:
-        last_message_date[user_id] = datetime.datetime.now()
+@bot.command(name='addpoints')
+async def add_points(ctx, member: discord.Member, points: int):
+    user_id = member.id
 
-    current_date = datetime.datetime.now()
-    days_since_last_message = (current_date - last_message_date[user_id]).days
-
-    user_points[user_id] += days_since_last_message
-    last_message_date[user_id] = current_date
-
-    if user_points[user_id] >= 5:
-        await message.channel.send(f"{message.author.mention}, Fired! 🔥")
-        user_points[user_id] = 0
+    if user_id in user_points:
+        user_points[user_id] += points
     else:
-        # Check for links or pictures
-        if any(word in message.content.lower() for word in ['http', 'www', '.com', '.net']) or message.attachments:
-            await message.channel.send(f"{message.author.mention}, {random.choice(corporate_messages)}")
-        else:
-            await bot.process_commands(message)
+        user_points[user_id] = points
 
-# Replace 'YOUR_BOT_TOKEN' with your actual Discord bot token
-bot.run('YOUR_BOT_TOKEN')
+    await ctx.send(f"{member.mention}, You have been awarded {points} points. Your total points: {user_points[user_id]}")
+
+@bot.command(name='points')
+async def view_points(ctx, member: discord.Member = None):
+    if member is None:
+        member = ctx.author
+
+    user_id = member.id
+
+    if user_id in user_points:
+        await ctx.send(f"{member.mention}, You have {user_points[user_id]} points.")
+    else:
+        await ctx.send(f"{member.mention}, You have 0 points.")
+
+bot.run('MTE5NTkwMjQyMjg3OTU4MDI4Mg.GBVgJ9.aK8MVIIKNe1J7UIBvbL0VpThws7xPoA1ZVL4LQ')
