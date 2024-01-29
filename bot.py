@@ -9,8 +9,8 @@ intents.messages = True
 bot = commands.Bot(command_prefix=commands.when_mentioned_or(''), intents=intents, help_command=commands.DefaultHelpCommand())
 
 # Add your application ID and public key here
-application_id = 1195902422879580282
-public_key = "9aa33fa40fbbd7d78eb26715d886e5dbbfcd80b4c384688f3f140268f5e17e18"
+application_id = 
+public_key = ""
 
 user_points = {}
 coaching_levels = {}  # To track coaching levels (green, yellow, red, terminated)
@@ -102,4 +102,4 @@ async def view_points(ctx, member: discord.Member = None):
     else:
         await ctx.send(f"{member.mention}, You have 0 points.")
 
-bot.run('MTE5NTkwMjQyMjg3OTU4MDI4Mg.GBVgJ9.aK8MVIIKNe1J7UIBvbL0VpThws7xPoA1ZVL4LQ')
+bot.run('')
